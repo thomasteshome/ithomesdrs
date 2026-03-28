@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "734351928285",
+    "project_id": "fomis-gofa-college",
+    "storage_bucket": "fomis-gofa-college.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:734351928285:android:d425e57fa6470cac642434",
+        "android_client_info": {
+          "package_name": "com.example.fomis_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC84jY-oSskmYplGdWcoNo-PNulQGwzGIc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
