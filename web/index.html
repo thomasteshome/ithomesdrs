@@ -14,7 +14,7 @@
     This is a placeholder for base href that will be replaced by the value of
     the `--base-href` argument provided to `flutter build`.
   -->
-  <base href="/ithomesdrs/">
+  <base href="$FLUTTER_BASE_HREF">
 
   <!-- Google Maps API -->
   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCeSQconPNiMNW3f7rhu1NnxvpC-E1jFcs"></script>
@@ -41,13 +41,10 @@
     window.addEventListener('load', function(ev) {
       _flutter.loader.loadEntrypoint({
         serviceWorker: {
-          serviceWorkerVersion: "486006636",
+          serviceWorkerVersion: {{flutter_service_worker_version}},
         },
         onEntrypointLoaded: function(engineInitializer) {
-          engineInitializer.initializeEngine({
-            renderer: "canvaskit",
-            canvasKitBaseUrl: "https://www.gstatic.com/flutter-canvaskit/f73bfc4522dd0bc87bbcdb4bb3088082755c5e87/",
-          }).then(function(appRunner) {
+          engineInitializer.initializeEngine().then(function(appRunner) {
             appRunner.runApp();
           });
         }
@@ -56,4 +53,3 @@
   </script>
 </body>
 </html>
-
