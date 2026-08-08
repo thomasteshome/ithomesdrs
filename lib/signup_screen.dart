@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'validators.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -29,8 +30,19 @@ class _SignupScreenState extends State<SignupScreen> {
   ];
 
   Future<void> _handleSignup() async {
-    if (_nameController.text.isEmpty || _emailController.text.isEmpty || _passwordController.text.isEmpty) {
+    if (_nameController.text.trim().isEmpty ||
+        _emailController.text.trim().isEmpty ||
+        _passwordController.text.isEmpty) {
       _showMessage("Please fill all fields", isError: true);
+      return;
+    }
+    final emailError = emailField(_emailController.text);
+    if (emailError != null) {
+      _showMessage(emailError, isError: true);
+      return;
+    }
+    if (_passwordController.text.length < 6) {
+      _showMessage("Password must be at least 6 characters", isError: true);
       return;
     }
     if (_passwordController.text != _confirmPasswordController.text) {

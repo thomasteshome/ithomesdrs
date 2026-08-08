@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
 
 // Import all screens
+import 'firestore_safe.dart';
 import 'login_screen.dart';
 import 'signup_screen.dart';
 import 'expert_dashboard.dart'; 
@@ -95,8 +96,10 @@ class RoleBaseWrapper extends StatelessWidget {
           return const LoginScreen();
         }
 
-        // Route to the correct dashboard based on Firestore role
-        String role = snapshot.data!.get('role');
+        // Route to the correct dashboard based on Firestore role.
+        // Use safe Map access: .get('role') throws a StateError when a legacy
+        // user document has no role field, which would crash the whole app.
+        final role = docStr(snapshot.data!, 'role');
         
         if (role == 'dean') return const DeanDashboard();
         if (role == 'deptHead') return const DeptHeadDashboard();
