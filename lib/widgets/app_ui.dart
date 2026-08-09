@@ -29,6 +29,10 @@ class AppPalette {
   static const Color textSecondary = Color(0xFF64748B);
   static const Color textMuted = Color(0xFF94A3B8);
 
+  /// Screen width (px) below which the fixed sidebar collapses into a
+  /// hamburger drawer so content is never squished on phones/tablets.
+  static const double desktopBreakpoint = 960;
+
   // Common gradients
   static const List<Color> primaryGradient = [
     Color(0xFF6366F1),
@@ -582,4 +586,19 @@ class FieldLabel extends StatelessWidget {
       ],
     );
   }
+}
+
+/// Formats a numeric initial-capital value as \"ETB 150,000\" with thousand
+/// separators. Returns a dash for null/blank/non-numeric values.
+String formatInitialCapital(dynamic value) {
+  if (value == null) return '—';
+  final num? n = value is num ? value : num.tryParse(value.toString().trim());
+  if (n == null || !n.isFinite) return '—';
+  final digits = n.round().abs().toString();
+  final buf = StringBuffer();
+  for (int i = 0; i < digits.length; i++) {
+    if (i > 0 && (digits.length - i) % 3 == 0) buf.write(',');
+    buf.write(digits[i]);
+  }
+  return 'ETB $buf';
 }

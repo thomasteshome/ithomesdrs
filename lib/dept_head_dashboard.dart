@@ -144,24 +144,47 @@ class _DeptHeadDashboardState extends State<DeptHeadDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isWide =
+        MediaQuery.of(context).size.width >= AppPalette.desktopBreakpoint;
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
+      // On narrow screens the fixed 260px sidebar would crush the content, so
+      // it collapses into a hamburger drawer instead of a side rail.
+      drawer: isWide
+          ? null
+          : Drawer(
+              width: 260,
+              elevation: 0,
+              backgroundColor: Colors.transparent,
+              child: DeptHeadSidebar(
+                currentIndex: _currentIndex,
+                onTabSelected: (index) {
+                  Navigator.of(context).pop();
+                  if (index == 8) {
+                    _handleLogout();
+                  } else {
+                    setState(() => _currentIndex = index);
+                  }
+                },
+              ),
+            ),
       body: Row(
         children: [
-          DeptHeadSidebar(
-            currentIndex: _currentIndex,
-            onTabSelected: (index) {
-              if (index == 8) {
-                _handleLogout();
-              } else {
-                setState(() => _currentIndex = index);
-              }
-            },
-          ),
+          if (isWide)
+            DeptHeadSidebar(
+              currentIndex: _currentIndex,
+              onTabSelected: (index) {
+                if (index == 8) {
+                  _handleLogout();
+                } else {
+                  setState(() => _currentIndex = index);
+                }
+              },
+            ),
           Expanded(
             child: Column(
               children: [
-                _buildHeader(),
+                _buildHeader(isWide: isWide),
                 Expanded(
                   child: IndexedStack(
                     index: _currentIndex,
@@ -185,33 +208,45 @@ class _DeptHeadDashboardState extends State<DeptHeadDashboard> {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader({required bool isWide}) {
     return Container(
       height: 74,
-      padding: const EdgeInsets.symmetric(horizontal: 30),
+      padding: EdgeInsets.symmetric(horizontal: isWide ? 30 : 12),
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(bottom: BorderSide(color: AppPalette.border)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.manage_accounts_rounded,
-              color: AppPalette.primary, size: 26),
-          const SizedBox(width: 12),
-          const Text(
-            "Department Management Portal",
-            style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                color: AppPalette.textPrimary),
+          if (!isWide)
+            Builder(
+              builder: (ctx) => IconButton(
+                icon: const Icon(Icons.menu_rounded, color: AppPalette.primary),
+                tooltip: "Menu",
+                onPressed: () => Scaffold.of(ctx).openDrawer(),
+              ),
+            ),
+          if (isWide) ...[
+            const Icon(Icons.manage_accounts_rounded,
+                color: AppPalette.primary, size: 26),
+            const SizedBox(width: 12),
+          ],
+          const Expanded(
+            child: Text(
+              "Department Management Portal",
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: AppPalette.textPrimary),
+            ),
           ),
-          const Spacer(),
           NotificationBell(
             scope:
                 NotificationScope(role: 'deptHead', department: _myDepartment),
           ),
-          const SizedBox(width: 14),
-          if (_myDepartment.isNotEmpty) ...[
+          if (isWide && _myDepartment.isNotEmpty) ...[
+            const SizedBox(width: 14),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
@@ -226,13 +261,15 @@ class _DeptHeadDashboardState extends State<DeptHeadDashboard> {
                       fontWeight: FontWeight.bold,
                       fontSize: 12)),
             ),
-            const SizedBox(width: 20),
           ],
-          Text(_myName.isEmpty ? "Head of Dept" : _myName,
-              style: const TextStyle(
-                  color: AppPalette.textSecondary,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13)),
+          if (isWide && _myName.isNotEmpty) ...[
+            const SizedBox(width: 20),
+            Text(_myName.isEmpty ? "Head of Dept" : _myName,
+                style: const TextStyle(
+                    color: AppPalette.textSecondary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13)),
+          ],
           const SizedBox(width: 20),
           const CircleAvatar(
             radius: 18,
@@ -2966,6 +3003,10 @@ class _DeptHeadDashboardState extends State<DeptHeadDashboard> {
                 _detailRow("Female Count", data['femaleCount']?.toString()),
                 _detailRow("Total Operators", data['totalCount']?.toString(),
                     isBold: true),
+                const Divider(),
+                _detailRow("Initial Capital",
+                    formatInitialCapital(data['initialCapital']),
+                    isBold: true),
               ],
             ),
           ),
@@ -2994,8 +3035,11 @@ class _DeptHeadDashboardState extends State<DeptHeadDashboard> {
       child: Column(
         children: [
           // --- HEADER & SEARCH BAR ---
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            spacing: 12,
+            runSpacing: 14,
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               const Text("Enterprise Registry",
                   style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
@@ -3230,13 +3274,15 @@ class _DeptHeadDashboardState extends State<DeptHeadDashboard> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
+                          Expanded(
+                            child: Text(
                             _contactsQuery.isEmpty
                                 ? "Total Records: ${deptDocs.length}"
                                 : "Found ${filteredDocs.length} of ${deptDocs.length} enterprises",
                             style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                                 color: Colors.blueGrey),
+                            ),
                           ),
                           TextButton.icon(
                             onPressed: _exportDeptEnterprises,

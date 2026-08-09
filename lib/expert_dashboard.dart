@@ -511,24 +511,47 @@ class _ExpertDashboardState extends State<ExpertDashboard> {
   // ============================ BUILD ============================
   @override
   Widget build(BuildContext context) {
+    final bool isWide =
+        MediaQuery.of(context).size.width >= AppPalette.desktopBreakpoint;
     return Scaffold(
       backgroundColor: AppPalette.background,
+      // On narrow screens the fixed 260px sidebar would crush the content, so
+      // it collapses into a hamburger drawer instead of a side rail.
+      drawer: isWide
+          ? null
+          : Drawer(
+              width: 260,
+              elevation: 0,
+              backgroundColor: Colors.transparent,
+              child: ExpertSidebar(
+                currentIndex: _currentIndex,
+                onTabSelected: (index) {
+                  Navigator.of(context).pop();
+                  if (index == 7) {
+                    _handleLogout();
+                  } else {
+                    setState(() => _currentIndex = index);
+                  }
+                },
+              ),
+            ),
       body: Row(
         children: [
-          ExpertSidebar(
-            currentIndex: _currentIndex,
-            onTabSelected: (index) {
-              if (index == 7) {
-                _handleLogout();
-              } else {
-                setState(() => _currentIndex = index);
-              }
-            },
-          ),
+          if (isWide)
+            ExpertSidebar(
+              currentIndex: _currentIndex,
+              onTabSelected: (index) {
+                if (index == 7) {
+                  _handleLogout();
+                } else {
+                  setState(() => _currentIndex = index);
+                }
+              },
+            ),
           Expanded(
             child: Column(
               children: [
-                _buildHeader(),
+                _buildHeader(isWide: isWide),
                 Expanded(child: _buildBody()),
               ],
             ),
@@ -538,7 +561,7 @@ class _ExpertDashboardState extends State<ExpertDashboard> {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader({required bool isWide}) {
     final initials = _myName
         .split(' ')
         .where((p) => p.isNotEmpty)
@@ -547,30 +570,45 @@ class _ExpertDashboardState extends State<ExpertDashboard> {
         .join();
     return Container(
       height: 74,
-      padding: const EdgeInsets.symmetric(horizontal: 30),
+      padding: EdgeInsets.symmetric(horizontal: isWide ? 30 : 12),
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(bottom: BorderSide(color: AppPalette.border)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.school_rounded,
-              color: AppPalette.primary, size: 26),
-          const SizedBox(width: 12),
-          const Text(
-            'Instructor Service Portal',
-            style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                color: AppPalette.textPrimary),
+          if (!isWide)
+            Builder(
+              builder: (ctx) => IconButton(
+                icon: const Icon(Icons.menu_rounded, color: AppPalette.primary),
+                tooltip: "Menu",
+                onPressed: () => Scaffold.of(ctx).openDrawer(),
+              ),
+            ),
+          if (isWide) ...[
+            const Icon(Icons.school_rounded,
+                color: AppPalette.primary, size: 26),
+            const SizedBox(width: 12),
+          ],
+          const Expanded(
+            child: Text(
+              'Instructor Service Portal',
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: AppPalette.textPrimary),
+            ),
           ),
-          const Spacer(),
           NotificationBell(
             scope: NotificationScope(role: 'expert', department: _myDepartment),
           ),
-          const SizedBox(width: 18),
-          Container(width: 1, height: 30, color: AppPalette.border),
-          const SizedBox(width: 18),
+          if (isWide) ...[
+            const SizedBox(width: 18),
+            Container(width: 1, height: 30, color: AppPalette.border),
+            const SizedBox(width: 18),
+          ] else
+            const SizedBox(width: 8),
           CircleAvatar(
             radius: 18,
             backgroundColor: AppPalette.primary,
@@ -582,23 +620,25 @@ class _ExpertDashboardState extends State<ExpertDashboard> {
                   fontWeight: FontWeight.w700),
             ),
           ),
-          const SizedBox(width: 10),
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(_myName,
+          if (isWide) ...[
+            const SizedBox(width: 10),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(_myName,
+                    style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppPalette.textPrimary)),
+                Text(
+                  _myDepartment.isEmpty ? 'Expert' : 'Expert · $_myDepartment',
                   style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: AppPalette.textPrimary)),
-              Text(
-                _myDepartment.isEmpty ? 'Expert' : 'Expert · $_myDepartment',
-                style: const TextStyle(
-                    fontSize: 11, color: AppPalette.textMuted),
-              ),
-            ],
-          ),
+                      fontSize: 11, color: AppPalette.textMuted),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -2105,7 +2145,9 @@ class _ExpertDashboardState extends State<ExpertDashboard> {
                         maxCrossAxisExtent: 320,
                         mainAxisSpacing: 16,
                         crossAxisSpacing: 16,
-                        childAspectRatio: 1.15,
+                        // Taller cards so the extra Initial Capital line and
+                        // the Scheduled badge never overflow on narrow grids.
+                        childAspectRatio: 0.9,
                       ),
                       itemCount: docs.length,
                       itemBuilder: (context, index) {
@@ -2229,6 +2271,9 @@ class _ExpertDashboardState extends State<ExpertDashboard> {
           const SizedBox(height: 6),
           _contactLine(
               Icons.phone_outlined, 'Phone', phone.isEmpty ? '—' : phone),
+          const SizedBox(height: 6),
+          _contactLine(Icons.payments_outlined, 'Initial Capital',
+              formatInitialCapital(data['initialCapital'])),
           const Spacer(),
           Row(
             children: [

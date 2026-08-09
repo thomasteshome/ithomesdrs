@@ -117,6 +117,8 @@ class _DeanDashboardState extends State<DeanDashboard> {
                 _detailRow("Male Count", data['maleCount']?.toString()),
                 _detailRow("Female Count", data['femaleCount']?.toString()),
                 _detailRow("Total Operators", data['totalCount']?.toString(), isBold: true),
+                const Divider(),
+                _detailRow("Initial Capital", formatInitialCapital(data['initialCapital']), isBold: true),
               ],
             ),
           ),
@@ -149,6 +151,7 @@ class _DeanDashboardState extends State<DeanDashboard> {
   final phoneController = TextEditingController();
   final maleCountController = TextEditingController(text: '0');
   final femaleCountController = TextEditingController(text: '0');
+  final initialCapitalController = TextEditingController();
   final woredaController = TextEditingController();
   final TextEditingController _woredaController = TextEditingController();
   String entDepartment = 'ICT';
@@ -181,8 +184,11 @@ class _DeanDashboardState extends State<DeanDashboard> {
                   Expanded(child: _buildField(subSectorController, "Sub Sector", Icons.account_tree)),
                 ]),
                 Row(children: [
-                  Expanded(child: _buildField(woredaController, "Woreda", Icons.map)),
+                  Expanded(child: _buildField(initialCapitalController, "Initial Capital (ETB)", Icons.payments_outlined, isNumber: true)),
                   const SizedBox(width: 10),
+                  Expanded(child: _buildField(woredaController, "Woreda", Icons.map)),
+                ]),
+                Row(children: [
                   Expanded(child: _buildField(maleCountController, "Male", Icons.male, isNumber: true)),
                   const SizedBox(width: 10),
                   Expanded(child: _buildField(femaleCountController, "Female", Icons.female, isNumber: true)),
@@ -256,6 +262,7 @@ class _DeanDashboardState extends State<DeanDashboard> {
                           'sector': sectorController.text,
                           'subSector': subSectorController.text,
                           'woreda': woredaController.text,
+                          'initialCapital': double.tryParse(initialCapitalController.text.trim()) ?? 0.0,
                           'maleCount': m,
                           'femaleCount': f,
                           'totalCount': m + f,
@@ -339,21 +346,47 @@ Future<LatLng?> _showMapPickerDialog(BuildContext context) async {
   // --- 4. MAIN BUILDER ---
   @override
   Widget build(BuildContext context) {
+    final bool isWide =
+        MediaQuery.of(context).size.width >= AppPalette.desktopBreakpoint;
     return Scaffold(
       backgroundColor: const Color(0xFFF1F5F9),
+      // On narrow screens the fixed 280px sidebar would crush the content, so
+      // it collapses into a hamburger drawer instead of a side rail.
+      drawer: isWide
+          ? null
+          : Drawer(
+              width: 280,
+              elevation: 0,
+              backgroundColor: Colors.transparent,
+              child: DeanSidebar(
+                currentIndex: _currentIndex,
+                onTabSelected: (index) {
+                  Navigator.of(context).pop();
+                  if (index == 9) {
+                    _handleLogout();
+                  } else {
+                    setState(() => _currentIndex = index);
+                  }
+                },
+              ),
+            ),
       body: Row(
         children: [
-          DeanSidebar(
-            currentIndex: _currentIndex,
-            onTabSelected: (index) {
-              if (index == 9) _handleLogout();
-              else setState(() => _currentIndex = index);
-            },
-          ),
+          if (isWide)
+            DeanSidebar(
+              currentIndex: _currentIndex,
+              onTabSelected: (index) {
+                if (index == 9) {
+                  _handleLogout();
+                } else {
+                  setState(() => _currentIndex = index);
+                }
+              },
+            ),
           Expanded(
             child: Column(
               children: [
-                _buildHeader(),
+                _buildHeader(isWide: isWide),
                 Expanded(
                   child: IndexedStack(
                     index: _currentIndex,
@@ -378,41 +411,62 @@ Future<LatLng?> _showMapPickerDialog(BuildContext context) async {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader({required bool isWide}) {
     return Container(
       height: 74,
-      padding: const EdgeInsets.symmetric(horizontal: 30),
+      padding: EdgeInsets.symmetric(horizontal: isWide ? 30 : 12),
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(bottom: BorderSide(color: AppPalette.border)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.account_balance_rounded, color: AppPalette.primary, size: 26),
-          const SizedBox(width: 12),
-          const Text(
-            "Dean Portal · GIC",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppPalette.textPrimary),
+          if (!isWide)
+            Builder(
+              builder: (ctx) => IconButton(
+                icon: const Icon(Icons.menu_rounded, color: AppPalette.primary),
+                tooltip: "Menu",
+                onPressed: () => Scaffold.of(ctx).openDrawer(),
+              ),
+            ),
+          if (isWide) ...[
+            const Icon(Icons.account_balance_rounded, color: AppPalette.primary, size: 26),
+            const SizedBox(width: 12),
+          ],
+          const Expanded(
+            child: Text(
+              "Dean Portal · GIC",
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppPalette.textPrimary),
+            ),
           ),
-          const Spacer(),
-          GradientButton(
-            label: "Broadcast",
-            icon: Icons.campaign_rounded,
-            width: 130,
-            height: 40,
-            fontSize: 13,
-            onPressed: _showBroadcastDialog,
-          ),
+          if (isWide)
+            GradientButton(
+              label: "Broadcast",
+              icon: Icons.campaign_rounded,
+              width: 130,
+              height: 40,
+              fontSize: 13,
+              onPressed: _showBroadcastDialog,
+            )
+          else
+            IconButton(
+              icon: const Icon(Icons.campaign_rounded, color: AppPalette.primary),
+              tooltip: "Broadcast",
+              onPressed: _showBroadcastDialog,
+            ),
           const SizedBox(width: 14),
           const NotificationBell(scope: NotificationScope(role: 'dean')),
-          const SizedBox(width: 14),
+          const SizedBox(width: 10),
           IconButton(
             icon: const Icon(Icons.file_download, color: AppPalette.primary),
             onPressed: _exportToExcel,
             tooltip: "Export to Excel",
           ),
-          const SizedBox(width: 10),
-          Container(width: 1, height: 30, color: AppPalette.border),
+          if (isWide) ...[
+            const SizedBox(width: 10),
+            Container(width: 1, height: 30, color: AppPalette.border),
+          ],
           const SizedBox(width: 14),
           const CircleAvatar(
             radius: 18,
@@ -436,8 +490,11 @@ Future<LatLng?> _showMapPickerDialog(BuildContext context) async {
     child: Column(
       children: [
         // --- HEADER & SEARCH BAR ---
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        Wrap(
+          spacing: 12,
+          runSpacing: 14,
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             const Text("Enterprise Registry", 
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
@@ -541,11 +598,13 @@ Future<LatLng?> _showMapPickerDialog(BuildContext context) async {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
+                        Expanded(
+                          child: Text(
                           _searchQuery.isEmpty 
                             ? "Total Records: ${snapshot.data!.docs.length}"
                             : "Found ${filteredDocs.length} of ${snapshot.data!.docs.length} enterprises",
                           style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey),
+                          ),
                         ),
                         // Quick access to your export logic
                         TextButton.icon(
@@ -635,6 +694,9 @@ Future<LatLng?> _showMapPickerDialog(BuildContext context) async {
                           const SizedBox(height: 4),
                           Text("LMIS: ${data['lmis']} | Woreda: ${data['woreda'] ?? 'N/A'}", 
                             style: const TextStyle(fontSize: 13)),
+                          const SizedBox(height: 4),
+                          Text("Initial Capital: ${formatInitialCapital(data['initialCapital'])}",
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                           const SizedBox(height: 6),
                           Row(
                             children: [
@@ -1877,8 +1939,11 @@ Widget _buildStaffManagement() {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        Wrap(
+          spacing: 12,
+          runSpacing: 14,
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             const Text("Staff & Field Operations", 
               style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
