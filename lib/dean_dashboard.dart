@@ -11,6 +11,7 @@ import 'widgets/notification_bell.dart';
 import 'notification_service.dart';
 import 'validators.dart';
 import 'firestore_safe.dart';
+import 'change_password.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 import 'package:syncfusion_flutter_charts/sparkcharts.dart'; // Optional for sparklines
@@ -2862,11 +2863,19 @@ Widget _buildSettingsView() {
               onTap: () => _showComingSoon("Data Export"),
             ),
             _settingsTile(
-              title: "Admin Profile",
-              subtitle: "Update Dean Credentials",
-              icon: Icons.admin_panel_settings_rounded,
+              title: "Change Password",
+              subtitle: "Update your sign-in credentials",
+              icon: Icons.password_rounded,
               color: Colors.purple,
-              onTap: () => _showComingSoon("Profile Settings"),
+              onTap: () async {
+                final changed = await showChangePasswordDialog(context);
+                if (changed && context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                        content: Text("Password updated successfully.")),
+                  );
+                }
+              },
             ),
           ],
         ),

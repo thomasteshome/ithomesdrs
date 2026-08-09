@@ -14,6 +14,7 @@ import 'notification_service.dart';
 import 'validators.dart';
 import 'pdf_reports.dart';
 import 'firestore_safe.dart';
+import 'change_password.dart';
 
 class _ChartData {
   final String category;
@@ -3310,10 +3311,91 @@ class _DeptHeadDashboardState extends State<DeptHeadDashboard> {
   }
 
   Widget _buildSettingsView() {
-    return const Center(
-      child: Text("Settings — Configuration tools coming soon.",
-          style: TextStyle(color: Colors.blueGrey, fontSize: 15)),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(30),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SectionTitle(
+            icon: Icons.settings_suggest_rounded,
+            title: 'Account Settings',
+            subtitle: 'Manage your account security and session.',
+          ),
+          const SizedBox(height: 24),
+          GlassCard(
+            padding: const EdgeInsets.all(26),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const IconBubble(
+                        icon: Icons.lock_reset_rounded,
+                        color: AppPalette.primary,
+                        size: 44),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Account Security',
+                              style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppPalette.textPrimary)),
+                          const SizedBox(height: 4),
+                          Text(
+                            _myName.isEmpty
+                                ? 'Keep your account safe.'
+                                : 'Signed in as $_myName',
+                            style: const TextStyle(
+                                fontSize: 12.5, color: AppPalette.textMuted),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const Divider(height: 28),
+                const Text(
+                  'Update your password to keep your account secure. You will be asked for your current password to confirm the change.',
+                  style: TextStyle(
+                      fontSize: 12.5,
+                      color: AppPalette.textSecondary,
+                      height: 1.5),
+                ),
+                const SizedBox(height: 18),
+                GradientButton(
+                  label: 'Change Password',
+                  icon: Icons.lock_reset_rounded,
+                  height: 48,
+                  fontSize: 14,
+                  onPressed: _changePassword,
+                ),
+                const SizedBox(height: 12),
+                GradientButton(
+                  label: 'Logout Account',
+                  icon: Icons.logout_rounded,
+                  height: 48,
+                  fontSize: 14,
+                  colors: const [Color(0xFFF87171), Color(0xFFDC2626)],
+                  onPressed: _handleLogout,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
+  }
+
+  Future<void> _changePassword() async {
+    final changed = await showChangePasswordDialog(context);
+    if (changed && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Password updated successfully.')),
+      );
+    }
   }
 
   void _handleLogout() async {

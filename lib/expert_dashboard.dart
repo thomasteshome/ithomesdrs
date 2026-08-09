@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'pdf_reports.dart';
 import 'notification_service.dart';
 import 'firestore_safe.dart';
+import 'change_password.dart';
 import 'widgets/expert_sidebar.dart';
 import 'widgets/app_ui.dart';
 import 'widgets/notification_bell.dart';
@@ -466,6 +467,14 @@ class _ExpertDashboardState extends State<ExpertDashboard> {
       verifierCtrl.dispose();
       finalReportCtrl.dispose();
     });
+  }
+
+  // ============================ CHANGE PASSWORD ============================
+  Future<void> _changePassword() async {
+    final changed = await showChangePasswordDialog(context);
+    if (changed && mounted) {
+      _snack('Password updated successfully.');
+    }
   }
 
   // ============================ LOGOUT ============================
@@ -2540,14 +2549,22 @@ class _ExpertDashboardState extends State<ExpertDashboard> {
                         fontWeight: FontWeight.w800,
                         color: AppPalette.textPrimary)),
                 const SizedBox(height: 6),
-                const Text('Sign out of the GIC Expert Portal on this device.',
+                const Text(
+                    'Update your password or sign out of the GIC Expert Portal.',
                     style: TextStyle(
                         fontSize: 12.5, color: AppPalette.textMuted)),
                 const SizedBox(height: 18),
                 GradientButton(
+                  label: 'Change Password',
+                  icon: Icons.lock_reset_rounded,
+                  height: 46,
+                  fontSize: 14,
+                  onPressed: _changePassword,
+                ),
+                const SizedBox(height: 12),
+                GradientButton(
                   label: 'Logout Account',
                   icon: Icons.logout_rounded,
-                  width: 220,
                   height: 46,
                   fontSize: 14,
                   colors: const [Color(0xFFF87171), Color(0xFFDC2626)],
