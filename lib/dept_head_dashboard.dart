@@ -1628,7 +1628,7 @@ class _DeptHeadDashboardState extends State<DeptHeadDashboard> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    value: role,
+                    initialValue: role,
                     items: const [
                       DropdownMenuItem(value: 'expert', child: Text("Expert")),
                       DropdownMenuItem(
@@ -1783,7 +1783,7 @@ class _DeptHeadDashboardState extends State<DeptHeadDashboard> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: role,
+                  initialValue: role,
                   items: const [
                     DropdownMenuItem(value: 'expert', child: Text("Expert")),
                     DropdownMenuItem(
@@ -2376,7 +2376,7 @@ class _DeptHeadDashboardState extends State<DeptHeadDashboard> {
                       DropdownButtonFormField<String>(
                         // Null-safe: if the stored id isn't in the loaded
                         // list, fall back to null so the dropdown never asserts.
-                        value: experts.any(
+                        initialValue: experts.any(
                                 (e) => e['id'].toString() == selectedExpertId)
                             ? selectedExpertId
                             : null,
@@ -2394,7 +2394,7 @@ class _DeptHeadDashboardState extends State<DeptHeadDashboard> {
                       const SizedBox(height: 12),
                       DropdownButtonFormField<String>(
                         // Same null-safe check as the expert dropdown.
-                        value: enterprises.any((e) =>
+                        initialValue: enterprises.any((e) =>
                                 e['id'].toString() == selectedEnterpriseId)
                             ? selectedEnterpriseId
                             : null,
@@ -2875,9 +2875,9 @@ class _DeptHeadDashboardState extends State<DeptHeadDashboard> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
-              color: Colors.indigo.withOpacity(0.08),
+              color: Colors.indigo.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: Colors.indigo.withOpacity(0.3)),
+              border: Border.all(color: Colors.indigo.withValues(alpha: 0.3)),
             ),
             child: Text(data['category'] ?? 'General Feedback',
                 style: const TextStyle(
@@ -3029,7 +3029,7 @@ class _DeptHeadDashboardState extends State<DeptHeadDashboard> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)
+          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)
         ],
       ),
       child: Column(
@@ -3133,8 +3133,9 @@ class _DeptHeadDashboardState extends State<DeptHeadDashboard> {
                     ),
                   );
                 }
-                if (!snapshot.hasData)
+                if (!snapshot.hasData) {
                   return const Center(child: CircularProgressIndicator());
+                }
 
                 // Same collection & schema as the Dean — one source of truth.
                 // Scoped client-side with case-insensitive, trimmed matching,
@@ -3307,9 +3308,9 @@ class _DeptHeadDashboardState extends State<DeptHeadDashboard> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.5)),
+        border: Border.all(color: color.withValues(alpha: 0.5)),
       ),
       child: Text(label,
           style: TextStyle(
@@ -3539,9 +3540,9 @@ class _DeptHeadDashboardState extends State<DeptHeadDashboard> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
       decoration: BoxDecoration(
-        color: c.withOpacity(0.1),
+        color: c.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: c.withOpacity(0.35)),
+        border: Border.all(color: c.withValues(alpha: 0.35)),
       ),
       child: Text(label,
           style:

@@ -67,6 +67,8 @@ class AppPalette {
       case 'Needs Revision':
       case 'Revision Requested':
         return const Color(0xFFEA580C); // orange
+      case 'Under Evaluation':
+        return const Color(0xFF2563EB); // blue
       case 'Pending Dean Review':
       case 'Pending':
         return const Color(0xFFD97706); // amber

@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -50,6 +52,43 @@ class _ExpertDashboardState extends State<ExpertDashboard> {
   final TextEditingController _techCategoryController = TextEditingController();
   final TextEditingController _techReasonController = TextEditingController();
 
+  // Target sectors (multi-select) for the technology proposal.
+  static const List<String> _techSectors = [
+    'Construction',
+    'Manufacturing',
+    'Agriculture',
+    'ICT',
+    'Textile & Garment',
+    'Metal & Engineering',
+    'Leather',
+    'Food & Beverage',
+  ];
+
+  // Financial scope of the proposal.
+  static const Map<String, String> _impactTiers = {
+    'Low Impact / Low Cost': 'Minimal funding needed; can be piloted with existing resources.',
+    'Medium Impact / Moderate Investment': 'Requires a moderate budget approved by the department.',
+    'High Impact / Major Project': 'Major investment; needs Dean / management approval.',
+  };
+
+  // Expected implementation duration.
+  static const Map<String, String> _timelineOptions = {
+    'Short-term (< 3 months)': 'Quick win deployable within one quarter.',
+    'Medium-term (3-6 months)': 'Needs one semester of development and testing.',
+    'Long-term (> 6 months)': 'Multi-phase project spanning the academic year.',
+  };
+
+  // Selections for the technology proposal form.
+  final List<String> _selectedSectors = <String>[];
+  String? _selectedImpactTier;
+  String? _selectedTimeline;
+
+  // Supporting documents attached to the proposal.
+  final List<PlatformFile> _techAttachments = <PlatformFile>[];
+  bool _isUploadingAttachment = false;
+
+  bool get _hasAttachments => _techAttachments.isNotEmpty;
+
   static const List<String> _reportTemplates = [
     'Standard Visit Report',
     'Technology Transfer Report',
@@ -78,6 +117,74 @@ class _ExpertDashboardState extends State<ExpertDashboard> {
     _techCategoryController.dispose();
     _techReasonController.dispose();
     super.dispose();
+  }
+
+  // ====================== TECH ATTACHMENT PICKER ======================
+  Future<void> _pickAttachments() async {
+    setState(() => _isUploadingAttachment = true);
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        allowMultiple: true,
+        type: FileType.custom,
+        allowedExtensions: const ['pdf', 'doc', 'docx', 'xlsx', 'png', 'jpg', 'jpeg'],
+        withData: true, // Web support: the bytes travel inside the PlatformFile.
+      );
+      if (result != null && result.files.isNotEmpty) {
+        setState(() {
+          for (final f in result.files) {
+            if (!_techAttachments.any((a) => a.name == f.name)) {
+              _techAttachments.add(f);
+            }
+          }
+        });
+        _snack('${result.files.length} document(s) attached.');
+      }
+    } catch (e) {
+      _snack('Could not attach file: $e', error: true);
+    } finally {
+      if (mounted) setState(() => _isUploadingAttachment = false);
+    }
+  }
+
+  void _removeAttachment(PlatformFile file) {
+    setState(() => _techAttachments.remove(file));
+  }
+
+  String _fileSizeLabel(int? bytes) {
+    if (bytes == null || bytes <= 0) return '';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(0)} KB';
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
+
+  void _clearTechForm() {
+    _techNameController.clear();
+    _techCategoryController.clear();
+    _techReasonController.clear();
+    setState(() {
+      _selectedSectors.clear();
+      _selectedImpactTier = null;
+      _selectedTimeline = null;
+      _techAttachments.clear();
+    });
+  }
+
+  IconData _fileIcon(String name) {
+    final ext = name.contains('.') ? name.split('.').last.toLowerCase() : '';
+    switch (ext) {
+      case 'pdf':
+        return Icons.picture_as_pdf_rounded;
+      case 'png':
+      case 'jpg':
+      case 'jpeg':
+        return Icons.image_rounded;
+      case 'doc':
+      case 'docx':
+        return Icons.description_rounded;
+      case 'xlsx':
+        return Icons.table_chart_rounded;
+      default:
+        return Icons.insert_drive_file_rounded;
+    }
   }
 
   // ============================ PROFILE ============================
@@ -268,19 +375,40 @@ class _ExpertDashboardState extends State<ExpertDashboard> {
   // ============================ SUBMIT TECHNOLOGY ============================
   Future<void> _submitTechnology() async {
     if (!(_techFormKey.currentState?.validate() ?? false)) return;
+    if (_selectedSectors.isEmpty) {
+      _snack('Select at least one target enterprise sector.', error: true);
+      return;
+    }
+    if (_selectedImpactTier == null) {
+      _snack('Choose the estimated budget / impact tier.', error: true);
+      return;
+    }
+    if (_selectedTimeline == null) {
+      _snack('Choose the implementation timeline.', error: true);
+      return;
+    }
     try {
       await FirebaseFirestore.instance.collection('proposed_technologies').add({
         'techName': _techNameController.text.trim(),
         'category': _techCategoryController.text.trim(),
         'purpose': _techReasonController.text.trim(),
+        'targetSectors': _selectedSectors.toList(),
+        'impactTier': _selectedImpactTier,
+        'timeline': _selectedTimeline,
+        'attachments': _techAttachments
+            .map((f) => {
+                  'name': f.name,
+                  'size': f.size,
+                  if (!kIsWeb && f.path != null) 'path': f.path,
+                })
+            .toList(),
         'status': 'Pending',
         'submittedBy': _expertId,
         'expertName': _myName,
+        'department': _myDepartment,
         'timestamp': FieldValue.serverTimestamp(),
       });
-      _techNameController.clear();
-      _techCategoryController.clear();
-      _techReasonController.clear();
+      _clearTechForm();
       _snack('Technology proposal sent to the Dean.');
     } catch (e) {
       _snack('Proposal failed: $e', error: true);
@@ -352,7 +480,7 @@ class _ExpertDashboardState extends State<ExpertDashboard> {
                   ),
                   const SizedBox(height: 18),
                   DropdownButtonFormField<String>(
-                    value: reportTemplate,
+                    initialValue: reportTemplate,
                     decoration: appInputDecoration(
                       label: 'Report Format',
                       icon: Icons.description_outlined,
@@ -2337,7 +2465,7 @@ class _ExpertDashboardState extends State<ExpertDashboard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SectionTitle(
+          const SectionTitle(
             icon: Icons.biotech_rounded,
             title: 'Propose a Technology',
             subtitle:
@@ -2394,6 +2522,68 @@ class _ExpertDashboardState extends State<ExpertDashboard> {
                         ? 'Purpose is required'
                         : null,
                   ),
+                  const SizedBox(height: 20),
+
+                  // ---- Target enterprise sectors (multi-select) ----
+                  const FieldLabel('Target Enterprise Sectors',
+                      icon: Icons.factory_rounded),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Select every department or sector this technology targets.',
+                    style: TextStyle(
+                        fontSize: 11.5, color: AppPalette.textMuted),
+                  ),
+                  const SizedBox(height: 10),
+                  _buildSectorSelector(),
+                  const SizedBox(height: 20),
+
+                  // ---- Budget impact tier + implementation timeline ----
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final bool isNarrow = constraints.maxWidth < 640;
+                      final Widget impact = _buildTechDropdown(
+                        label: 'Estimated Budget / Impact Tier',
+                        icon: Icons.payments_rounded,
+                        hint: 'Select financial scope',
+                        value: _selectedImpactTier,
+                        items: _impactTiers.keys.toList(),
+                        subtitles: _impactTiers,
+                        onChanged: (v) =>
+                            setState(() => _selectedImpactTier = v),
+                      );
+                      final Widget timeline = _buildTechDropdown(
+                        label: 'Implementation Timeline',
+                        icon: Icons.update_rounded,
+                        hint: 'Expected duration',
+                        value: _selectedTimeline,
+                        items: _timelineOptions.keys.toList(),
+                        subtitles: _timelineOptions,
+                        onChanged: (v) =>
+                            setState(() => _selectedTimeline = v),
+                      );
+                      if (isNarrow) {
+                        return Column(
+                          children: [
+                            impact,
+                            const SizedBox(height: 16),
+                            timeline,
+                          ],
+                        );
+                      }
+                      return Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(child: impact),
+                          const SizedBox(width: 16),
+                          Expanded(child: timeline),
+                        ],
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 20),
+
+                  // ---- Supporting documents / attachments ----
+                  _buildAttachmentSection(),
                   const SizedBox(height: 26),
                   GradientButton(
                     label: 'Submit Proposal',
@@ -2422,6 +2612,258 @@ class _ExpertDashboardState extends State<ExpertDashboard> {
           ),
           const SizedBox(height: 14),
           _buildTechStatusList(),
+        ],
+      ),
+    );
+  }
+
+  // ---- Proposal form: sector icons + multi-select chips ----
+  IconData _sectorIcon(String sector) {
+    switch (sector) {
+      case 'Construction':
+        return Icons.construction_rounded;
+      case 'Manufacturing':
+        return Icons.precision_manufacturing_rounded;
+      case 'Agriculture':
+        return Icons.agriculture_rounded;
+      case 'ICT':
+        return Icons.computer_rounded;
+      case 'Textile & Garment':
+        return Icons.checkroom_rounded;
+      case 'Metal & Engineering':
+        return Icons.hardware_rounded;
+      case 'Leather':
+        return Icons.shopping_bag_rounded;
+      case 'Food & Beverage':
+        return Icons.restaurant_rounded;
+      default:
+        return Icons.category_rounded;
+    }
+  }
+
+  Widget _buildSectorSelector() {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: _techSectors.map((sector) {
+        final bool selected = _selectedSectors.contains(sector);
+        return FilterChip(
+          label: Text(sector),
+          selected: selected,
+          showCheckmark: false,
+          avatar: Icon(
+            _sectorIcon(sector),
+            size: 16,
+            color: selected ? Colors.white : AppPalette.primary,
+          ),
+          labelStyle: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: selected ? Colors.white : AppPalette.textPrimary,
+          ),
+          selectedColor: AppPalette.primary,
+          backgroundColor: AppPalette.inputFill,
+          checkmarkColor: Colors.white,
+          side: BorderSide(
+              color: selected ? AppPalette.primary : AppPalette.border),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          onSelected: (bool on) => setState(() {
+            if (on) {
+              _selectedSectors.add(sector);
+            } else {
+              _selectedSectors.remove(sector);
+            }
+          }),
+        );
+      }).toList(),
+    );
+  }
+
+  // ---- Proposal form: styled dropdown with helper microcopy ----
+  Widget _buildTechDropdown({
+    required String label,
+    required IconData icon,
+    required String hint,
+    required String? value,
+    required List<String> items,
+    required Map<String, String> subtitles,
+    required ValueChanged<String?> onChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        DropdownButtonFormField<String>(
+          initialValue: value,
+          isExpanded: true,
+          decoration:
+              appInputDecoration(label: label, hint: hint, icon: icon),
+          items: items
+              .map((s) => DropdownMenuItem<String>(
+                    value: s,
+                    child: Text(
+                      s,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          fontSize: 13, color: AppPalette.textPrimary),
+                    ),
+                  ))
+              .toList(),
+          onChanged: onChanged,
+          validator: (v) => v == null ? 'This field is required' : null,
+        ),
+        if (value != null && subtitles[value] != null) ...[
+          const SizedBox(height: 6),
+          Text(
+            subtitles[value]!,
+            style:
+                const TextStyle(fontSize: 11.5, color: AppPalette.textMuted),
+          ),
+        ],
+      ],
+    );
+  }
+
+  // ---- Proposal form: attachment upload UI ----
+  Widget _buildAttachmentSection() {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppPalette.inputFill.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppPalette.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.attach_file_rounded,
+                  size: 17, color: AppPalette.primary),
+              const SizedBox(width: 6),
+              const Text(
+                'Supporting Documents',
+                style: TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                    color: AppPalette.textPrimary),
+              ),
+              const Spacer(),
+              const Text(
+                'PDF, DOC, XLS or images',
+                style: TextStyle(fontSize: 11, color: AppPalette.textMuted),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Material(
+            color: AppPalette.surface,
+            borderRadius: BorderRadius.circular(12),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: _isUploadingAttachment ? null : _pickAttachments,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 22),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: AppPalette.primaryLight.withValues(alpha: 0.5),
+                    width: 1.5,
+                  ),
+                ),
+                child: _isUploadingAttachment
+                    ? const Center(
+                        child: SizedBox(
+                          width: 22,
+                          height: 22,
+                          child:
+                              CircularProgressIndicator(strokeWidth: 2.2),
+                        ),
+                      )
+                    : Column(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: AppPalette.primaryLight
+                                  .withValues(alpha: 0.12),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.cloud_upload_rounded,
+                                color: AppPalette.primaryLight, size: 26),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Click to attach documents',
+                            style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: AppPalette.textPrimary),
+                          ),
+                          const SizedBox(height: 3),
+                          const Text(
+                            'Feasibility notes, drawings, certificates or photos',
+                            style: TextStyle(
+                                fontSize: 11, color: AppPalette.textMuted),
+                          ),
+                        ],
+                      ),
+              ),
+            ),
+          ),
+          if (_hasAttachments) ..._techAttachments.map(_buildAttachmentTile),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAttachmentTile(PlatformFile file) {
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppPalette.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppPalette.border),
+      ),
+      child: Row(
+        children: [
+          IconBubble(
+              icon: _fileIcon(file.name),
+              color: AppPalette.primaryLight,
+              size: 34),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  file.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: AppPalette.textPrimary),
+                ),
+                if (_fileSizeLabel(file.size).isNotEmpty)
+                  Text(
+                    _fileSizeLabel(file.size),
+                    style: const TextStyle(
+                        fontSize: 11, color: AppPalette.textMuted),
+                  ),
+              ],
+            ),
+          ),
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            tooltip: 'Remove attachment',
+            icon: const Icon(Icons.close_rounded,
+                size: 18, color: AppPalette.textMuted),
+            onPressed: () => _removeAttachment(file),
+          ),
         ],
       ),
     );
@@ -2461,51 +2903,232 @@ class _ExpertDashboardState extends State<ExpertDashboard> {
           );
         }
         return Column(
-          children: docs.map((doc) {
-            final data = doc.data() as Map<String, dynamic>;
-            final status = (data['status'] ?? 'Pending').toString();
-            final color = AppPalette.statusColor(status);
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: HoverCard(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-                child: Row(
+          children: docs
+              .map((doc) => Padding(
+                    padding: const EdgeInsets.only(bottom: 14),
+                    child: _buildTechCard(doc.data() as Map<String, dynamic>),
+                  ))
+              .toList(),
+        );
+      },
+    );
+  }
+
+  /// Color-coded status pill: Pending (amber), Under Evaluation (blue),
+  /// Approved (green), Rejected (red).
+  Widget _techStatusBadge(String status, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 7,
+            height: 7,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            status,
+            style: TextStyle(
+                color: color, fontSize: 11, fontWeight: FontWeight.w800),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _techMetaChip(IconData icon, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: AppPalette.inputFill,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppPalette.border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: AppPalette.textMuted),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: AppPalette.textSecondary),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Mini timeline: Submitted → Evaluation → Decision, color-coded dots.
+  Widget _techMiniTimeline(String status) {
+    final Color pending = AppPalette.statusColor('Pending');
+    final Color evaluating = AppPalette.statusColor('Under Evaluation');
+    final Color color = AppPalette.statusColor(status);
+    final bool inEvaluation = status != 'Pending';
+    final bool decided = status == 'Approved' || status == 'Rejected';
+
+    Widget dot(bool reached, Color active) {
+      return Container(
+        width: 10,
+        height: 10,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: reached ? active : AppPalette.surface,
+          border: Border.all(
+              color: reached ? active : AppPalette.border, width: 1.6),
+        ),
+      );
+    }
+
+    Widget segment(bool reached, Color active) {
+      return Expanded(
+        child: Container(
+            height: 2.5, color: reached ? active : AppPalette.border),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            dot(true, pending),
+            segment(true, pending),
+            dot(inEvaluation, evaluating),
+            segment(decided, evaluating),
+            dot(decided, color),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            const Expanded(
+              child: Text('Submitted',
+                  style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: AppPalette.textMuted)),
+            ),
+            Expanded(
+              child: Text('Evaluation',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color:
+                          inEvaluation ? evaluating : AppPalette.textMuted)),
+            ),
+            Expanded(
+              child: Text('Decision',
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: decided ? color : AppPalette.textMuted)),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTechCard(Map<String, dynamic> data) {
+    final status = (data['status'] ?? 'Pending').toString();
+    final color = AppPalette.statusColor(status);
+    final sectors = (data['targetSectors'] is List)
+        ? (data['targetSectors'] as List).map((e) => e.toString()).toList()
+        : <String>[];
+    final attachments = (data['attachments'] is List)
+        ? (data['attachments'] as List).length
+        : 0;
+    final submitted = data['timestamp'] is Timestamp
+        ? (data['timestamp'] as Timestamp).toDate()
+        : null;
+    String submittedLabel = 'Just now';
+    if (submitted != null) {
+      final diff = DateTime.now().difference(submitted);
+      if (diff.isNegative) {
+        submittedLabel = 'Just now';
+      } else if (diff.inDays >= 1) {
+        submittedLabel = DateFormat('dd MMM yyyy').format(submitted);
+      } else if (diff.inHours >= 1) {
+        submittedLabel = '${diff.inHours}h ago';
+      } else {
+        submittedLabel = '${diff.inMinutes}m ago';
+      }
+    }
+
+    return HoverCard(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              IconBubble(
+                  icon: Icons.biotech_rounded, color: color, size: 42),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    IconBubble(
-                        icon: Icons.biotech_rounded, color: color, size: 40),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            data['techName'] ?? 'Unnamed Technology',
-                            style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 14,
-                                color: AppPalette.textPrimary),
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            '${data['category'] ?? 'General'} · ${(data['purpose'] ?? '').toString().length > 60 ? '${(data['purpose'] ?? '').toString().substring(0, 60)}…' : (data['purpose'] ?? '')}',
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                                fontSize: 11.5, color: AppPalette.textMuted),
-                          ),
-                        ],
-                      ),
+                    Text(
+                      data['techName'] ?? 'Unnamed Technology',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                          color: AppPalette.textPrimary),
                     ),
-                    const SizedBox(width: 10),
-                    StatusChip(status, color: color),
+                    const SizedBox(height: 3),
+                    Text(
+                      '${data['category'] ?? 'General'} · ${(data['purpose'] ?? '').toString().length > 80 ? '${(data['purpose'] ?? '').toString().substring(0, 80)}…' : (data['purpose'] ?? '')}',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          fontSize: 12,
+                          color: AppPalette.textSecondary,
+                          height: 1.4),
+                    ),
                   ],
                 ),
               ),
-            );
-          }).toList(),
-        );
-      },
+              const SizedBox(width: 10),
+              _techStatusBadge(status, color),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            children: [
+              _techMetaChip(Icons.event_outlined, 'Submitted $submittedLabel'),
+              if (sectors.isNotEmpty)
+                _techMetaChip(Icons.factory_outlined, sectors.join(' · ')),
+              if ((data['impactTier'] ?? '').toString().isNotEmpty)
+                _techMetaChip(
+                    Icons.payments_outlined, data['impactTier'].toString()),
+              if ((data['timeline'] ?? '').toString().isNotEmpty)
+                _techMetaChip(
+                    Icons.update_outlined, data['timeline'].toString()),
+              if (attachments > 0)
+                _techMetaChip(Icons.attach_file_rounded,
+                    '$attachments file${attachments == 1 ? '' : 's'}'),
+            ],
+          ),
+          const SizedBox(height: 14),
+          _techMiniTimeline(status),
+        ],
+      ),
     );
   }
 

@@ -7,6 +7,7 @@
 /// helpers read through `doc.data()` (a plain Map) so missing/null fields
 /// fall back to a default instead of crashing the widget tree.
 /// ============================================================================
+library;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 

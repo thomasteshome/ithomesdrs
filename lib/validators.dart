@@ -4,6 +4,7 @@
 /// account-creation forms across the GIC portals. All checks are run before
 /// data is written to Firestore.
 /// ============================================================================
+library;
 
 /// Non-empty after trimming.
 String? requiredField(String? value, {String message = 'This field is required'}) {

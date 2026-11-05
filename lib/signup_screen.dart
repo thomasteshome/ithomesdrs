@@ -123,9 +123,9 @@ class _SignupScreenState extends State<SignupScreen> {
                         child: Container(
                           padding: const EdgeInsets.all(25),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.12),
+                            color: Colors.white.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(30),
-                            border: Border.all(color: Colors.white.withOpacity(0.2)),
+                            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -192,15 +192,15 @@ class _SignupScreenState extends State<SignupScreen> {
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.1),
+            color: Colors.white.withValues(alpha: 0.1),
             shape: BoxShape.circle,
-            border: Border.all(color: Colors.white.withOpacity(0.2)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
           ),
           child: const Icon(Icons.person_add_rounded, size: 60, color: Colors.white),
         ),
         const SizedBox(height: 15),
         const Text("CREATE ACCOUNT", style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 2)),
-        Text("Join the GIC Portal", style: TextStyle(color: Colors.white.withOpacity(0.7), fontWeight: FontWeight.w300)),
+        Text("Join the GIC Portal", style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontWeight: FontWeight.w300)),
       ],
     );
   }
@@ -224,8 +224,8 @@ class _SignupScreenState extends State<SignupScreen> {
           onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
         ) : null,
         filled: true,
-        fillColor: Colors.white.withOpacity(0.08),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide(color: Colors.white.withOpacity(0.2))),
+        fillColor: Colors.white.withValues(alpha: 0.08),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.2))),
         focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: Colors.white70)),
         contentPadding: const EdgeInsets.symmetric(vertical: 15),
       ),
@@ -236,9 +236,9 @@ class _SignupScreenState extends State<SignupScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.08),
+        color: Colors.white.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Colors.white.withOpacity(0.2)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(

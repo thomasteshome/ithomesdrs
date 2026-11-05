@@ -21,7 +21,7 @@ class WebSidebar extends StatelessWidget {
                 const CircleAvatar(radius: 40, backgroundColor: Colors.white, child: Icon(Icons.school, size: 40)),
                 const SizedBox(height: 12),
                 const Text("GOFA INDUSTRIAL", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                Text("COLLEGE", style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 12)),
+                Text("COLLEGE", style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12)),
               ],
             ),
           ),

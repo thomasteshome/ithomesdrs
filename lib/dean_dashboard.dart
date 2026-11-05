@@ -141,6 +141,26 @@ class _DeanDashboardState extends State<DeanDashboard> {
     );
   }
 
+  /// Circular, color-tinted action button used in the registry's Actions
+  /// column (View / Edit / Delete). Matches the pastel chip aesthetic.
+  Widget _actionIcon(IconData icon, String tooltip, Color color, VoidCallback onTap) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(7),
+            child: Icon(icon, size: 19, color: color),
+          ),
+        ),
+      ),
+    );
+  }
+
   // --- 3. REGISTRATION FORM ---
   void _showAddEnterpriseForm() {
   final nameController = TextEditingController();
@@ -153,7 +173,7 @@ class _DeanDashboardState extends State<DeanDashboard> {
   final femaleCountController = TextEditingController(text: '0');
   final initialCapitalController = TextEditingController();
   final woredaController = TextEditingController();
-  final TextEditingController _woredaController = TextEditingController();
+  final TextEditingController woredaController0 = TextEditingController();
   String entDepartment = 'ICT';
 
   showModalBottomSheet(
@@ -195,7 +215,7 @@ class _DeanDashboardState extends State<DeanDashboard> {
                 ]),
                 const SizedBox(height: 10),
                 DropdownButtonFormField<String>(
-                  value: entDepartment,
+                  initialValue: entDepartment,
                   decoration: const InputDecoration(
                     labelText: "Owning Department",
                     prefixIcon: Icon(Icons.account_tree_outlined, size: 20),
@@ -343,6 +363,244 @@ Future<LatLng?> _showMapPickerDialog(BuildContext context) async {
     );
   }
 
+  // --- 3b. EDIT ENTERPRISE (PRE-FILLED MODAL) ---
+  void _showEditEnterpriseDialog(DocumentSnapshot doc, Map<String, dynamic> data) {
+    final editFormKey = GlobalKey<FormState>();
+    final nameController = TextEditingController(text: (data['entName'] ?? '').toString());
+    final lmisController = TextEditingController(text: (data['lmis'] ?? '').toString());
+    final sectorController = TextEditingController(text: (data['sector'] ?? '').toString());
+    final subSectorController = TextEditingController(text: (data['subSector'] ?? '').toString());
+    final repNameController = TextEditingController(text: (data['repName'] ?? '').toString());
+    final phoneController = TextEditingController(text: (data['phone'] ?? '').toString());
+    final maleCountController = TextEditingController(text: (data['maleCount'] ?? 0).toString());
+    final femaleCountController = TextEditingController(text: (data['femaleCount'] ?? 0).toString());
+    final initialCapitalController = TextEditingController(text: (data['initialCapital'] ?? '').toString());
+    final woredaController = TextEditingController(text: (data['woreda'] ?? '').toString());
+    bool isModel = (data['isModel'] ?? false) == true;
+    bool isSaving = false;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              IconBubble(icon: Icons.edit_rounded, color: AppPalette.teal, size: 38),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text("Edit Enterprise",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+              ),
+            ],
+          ),
+          content: SizedBox(
+            width: 520,
+            child: SingleChildScrollView(
+              child: Form(
+                key: editFormKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(children: [
+                      Expanded(child: _buildField(lmisController, "LMIS #", Icons.tag)),
+                      const SizedBox(width: 12),
+                      Expanded(child: _buildField(nameController, "Enterprise Name", Icons.business)),
+                    ]),
+                    const SizedBox(height: 14),
+                    Row(children: [
+                      Expanded(child: _buildField(repNameController, "Representative", Icons.person)),
+                      const SizedBox(width: 12),
+                      Expanded(child: _buildField(phoneController, "Phone", Icons.phone, isPhone: true)),
+                    ]),
+                    const SizedBox(height: 14),
+                    Row(children: [
+                      Expanded(child: _buildField(sectorController, "Sector", Icons.category)),
+                      const SizedBox(width: 12),
+                      Expanded(child: _buildField(subSectorController, "Sub Sector", Icons.account_tree)),
+                    ]),
+                    const SizedBox(height: 14),
+                    Row(children: [
+                      Expanded(child: _buildField(woredaController, "Woreda", Icons.map)),
+                      const SizedBox(width: 12),
+                      Expanded(child: _buildField(initialCapitalController, "Initial Capital (ETB)", Icons.payments_outlined, isNumber: true)),
+                    ]),
+                    const SizedBox(height: 14),
+                    Row(children: [
+                      Expanded(child: _buildField(maleCountController, "Male Operators", Icons.male, isNumber: true)),
+                      const SizedBox(width: 12),
+                      Expanded(child: _buildField(femaleCountController, "Female Operators", Icons.female, isNumber: true)),
+                    ]),
+                    const SizedBox(height: 10),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.amber.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+                      ),
+                      child: SwitchListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                        dense: true,
+                        activeThumbColor: Colors.amber,
+                        title: const Text("Model Enterprise Status",
+                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                        subtitle: const Text(
+                            "Showcases this enterprise as a model partner for students.",
+                            style: TextStyle(fontSize: 11.5)),
+                        value: isModel,
+                        onChanged: (v) => setDialogState(() => isModel = v),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: isSaving ? null : () => Navigator.pop(dialogContext),
+              child: const Text("Cancel", style: TextStyle(color: Colors.blueGrey)),
+            ),
+            GradientButton(
+              label: isSaving ? "Saving..." : "Save Changes",
+              icon: Icons.save_rounded,
+              width: 165,
+              height: 44,
+              fontSize: 13,
+              onPressed: isSaving
+                  ? null
+                  : () async {
+                      if (!(editFormKey.currentState?.validate() ?? false)) return;
+                      setDialogState(() => isSaving = true);
+                      try {
+                        final int m = int.tryParse(maleCountController.text.trim()) ?? 0;
+                        final int f = int.tryParse(femaleCountController.text.trim()) ?? 0;
+                        await doc.reference.update({
+                          'lmis': lmisController.text.trim(),
+                          'entName': nameController.text.trim(),
+                          'repName': repNameController.text.trim(),
+                          'phone': phoneController.text.trim(),
+                          'sector': sectorController.text.trim(),
+                          'subSector': subSectorController.text.trim(),
+                          'woreda': woredaController.text.trim(),
+                          'initialCapital': double.tryParse(initialCapitalController.text.trim()) ?? 0.0,
+                          'maleCount': m,
+                          'femaleCount': f,
+                          'totalCount': m + f,
+                          'isModel': isModel,
+                          'updatedAt': FieldValue.serverTimestamp(),
+                        });
+                        if (!mounted) return;
+                        Navigator.pop(dialogContext);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text("${nameController.text.trim()} updated successfully."),
+                            behavior: SnackBarBehavior.floating,
+                            backgroundColor: const Color(0xFF16A34A),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        );
+                      } catch (e) {
+                        if (!mounted) return;
+                        setDialogState(() => isSaving = false);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text("Update failed: $e"),
+                            behavior: SnackBarBehavior.floating,
+                            backgroundColor: const Color(0xFFDC2626),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        );
+                      }
+                    },
+            ),
+          ],
+        ),
+      ),
+    ).whenComplete(() {
+      nameController.dispose();
+      lmisController.dispose();
+      sectorController.dispose();
+      subSectorController.dispose();
+      repNameController.dispose();
+      phoneController.dispose();
+      maleCountController.dispose();
+      femaleCountController.dispose();
+      initialCapitalController.dispose();
+      woredaController.dispose();
+    });
+  }
+
+  // --- 3c. DELETE ENTERPRISE (CONFIRMATION REQUIRED) ---
+  Future<void> _confirmDeleteEnterprise(DocumentSnapshot doc, Map<String, dynamic> data) async {
+    final String name = (data['entName'] ?? 'this enterprise').toString();
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        icon: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.red.withValues(alpha: 0.08),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.delete_forever_rounded, color: Color(0xFFDC2626), size: 30),
+        ),
+        title: const Text("Delete Enterprise?",
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+        content: Text(
+          'Are you sure you want to delete "$name" from the registry?\n\n'
+          'This will permanently remove the enterprise record. This action cannot be undone.',
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 13.5, height: 1.5),
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text("Cancel", style: TextStyle(color: Colors.blueGrey)),
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFDC2626),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            ),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            icon: const Icon(Icons.delete_rounded, size: 18),
+            label: const Text("Delete"),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+    try {
+      await doc.reference.delete();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("$name removed from the registry."),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: const Color(0xFFDC2626),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Delete failed: $e"),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: const Color(0xFFDC2626),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+    }
+  }
+
   // --- 4. MAIN BUILDER ---
   @override
   Widget build(BuildContext context) {
@@ -485,7 +743,7 @@ Future<LatLng?> _showMapPickerDialog(BuildContext context) async {
     decoration: BoxDecoration(
       color: Colors.white,
       borderRadius: BorderRadius.circular(15),
-      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)],
     ),
     child: Column(
       children: [
@@ -580,9 +838,15 @@ Future<LatLng?> _showMapPickerDialog(BuildContext context) async {
                                     icon: Icon(isModel ? Icons.star : Icons.star_border, color: Colors.amber),
                                     onPressed: () => doc.reference.update({'isModel': !isModel}),
                                   )),
-                                  DataCell(Row(children: [
-                                    IconButton(icon: const Icon(Icons.visibility, color: Colors.blue), onPressed: () => _showEnterpriseDetails(data)),
-                                    IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () => doc.reference.delete()),
+                                  DataCell(Row(mainAxisSize: MainAxisSize.min, children: [
+                                    _actionIcon(Icons.visibility_rounded, "View Details",
+                                        const Color(0xFF2563EB), () => _showEnterpriseDetails(data)),
+                                    const SizedBox(width: 6),
+                                    _actionIcon(Icons.edit_rounded, "Edit Enterprise",
+                                        const Color(0xFF0D9488), () => _showEditEnterpriseDialog(doc, data)),
+                                    const SizedBox(width: 6),
+                                    _actionIcon(Icons.delete_rounded, "Delete Enterprise",
+                                        const Color(0xFFDC2626), () => _confirmDeleteEnterprise(doc, data)),
                                   ])),
                                 ]);
                               }).toList(),
@@ -633,7 +897,7 @@ Future<LatLng?> _showMapPickerDialog(BuildContext context) async {
       borderRadius: BorderRadius.circular(15),
       border: Border.all(color: Colors.amber.shade200, width: 2),
       boxShadow: [
-        BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 5))
+        BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 5))
       ],
     ),
     child: Column(
@@ -739,9 +1003,9 @@ Widget _statusChip(String label, Color color) {
   return Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
     decoration: BoxDecoration(
-      color: color.withOpacity(0.1),
+      color: color.withValues(alpha: 0.1),
       borderRadius: BorderRadius.circular(6),
-      border: Border.all(color: color.withOpacity(0.3)),
+      border: Border.all(color: color.withValues(alpha: 0.3)),
     ),
     child: Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold)),
   );
@@ -918,7 +1182,7 @@ Widget _chartContainer(String title, Widget chart) {
     decoration: BoxDecoration(
       color: Colors.white,
       borderRadius: BorderRadius.circular(15),
-      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)],
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2307,7 +2571,7 @@ void _showAddStaffDialog(BuildContext context) {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: role,
+                  initialValue: role,
                   items: const [
                     DropdownMenuItem(value: 'expert', child: Text("Expert")),
                     DropdownMenuItem(value: 'deptHead', child: Text("Department Head")),
@@ -2319,7 +2583,7 @@ void _showAddStaffDialog(BuildContext context) {
                 if (role != 'dean') ...[
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    value: department,
+                    initialValue: department,
                     items: _collegeDepartments
                         .map((d) => DropdownMenuItem(value: d, child: Text(d)))
                         .toList(),
@@ -2497,7 +2761,7 @@ void _showBroadcastDialog() {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: audience,
+                  initialValue: audience,
                   items: const [
                     DropdownMenuItem(value: 'all', child: Text("College-Wide (All Staff)")),
                     DropdownMenuItem(value: 'department', child: Text("Specific Department")),
@@ -2510,7 +2774,7 @@ void _showBroadcastDialog() {
                 if (audience == 'department') ...[
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    value: department,
+                    initialValue: department,
                     items: _collegeDepartments
                         .map((d) => DropdownMenuItem(value: d, child: Text(d)))
                         .toList(),
@@ -2521,7 +2785,7 @@ void _showBroadcastDialog() {
                 if (audience == 'role') ...[
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    value: roleTarget,
+                    initialValue: roleTarget,
                     items: const [
                       DropdownMenuItem(value: 'expert', child: Text("All Experts")),
                       DropdownMenuItem(value: 'deptHead', child: Text("All Department Heads")),
@@ -2533,7 +2797,7 @@ void _showBroadcastDialog() {
                 ],
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: priority,
+                  initialValue: priority,
                   items: ['High', 'Normal', 'Low']
                       .map((p) => DropdownMenuItem(value: p, child: Text(p)))
                       .toList(),
@@ -2784,7 +3048,7 @@ Widget _buildScheduleOverviewView() {
                       SizedBox(
                         width: 230,
                         child: DropdownButtonFormField<String>(
-                          value: deptFilter,
+                          initialValue: deptFilter,
                           items: deptList
                               .map((d) => DropdownMenuItem(value: d, child: Text(d)))
                               .toList(),
@@ -2798,7 +3062,7 @@ Widget _buildScheduleOverviewView() {
                       SizedBox(
                         width: 230,
                         child: DropdownButtonFormField<String>(
-                          value: expertFilter,
+                          initialValue: expertFilter,
                           items: expertList
                               .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                               .toList(),
@@ -2959,13 +3223,13 @@ Widget _settingsTile({required String title, required String subtitle, required 
         color: Colors.white,
         borderRadius: BorderRadius.circular(15),
         border: Border.all(color: Colors.grey.shade200),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10)],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10)],
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+            decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
             child: Icon(icon, color: color, size: 28),
           ),
           const SizedBox(width: 15),
@@ -3046,7 +3310,7 @@ Widget _buildStatusBadge(String status, DocumentSnapshot doc) {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: color),
         ),
